@@ -464,8 +464,8 @@
         <div class="upload-hint" id="uploadHint" style="display:none">Oder: <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('albumInput').click()">Aus Album waehlen</a></div>
 
         <!-- Kundenbilder Upload - immer sichtbar -->
-        <label class="album-btn" id="albumBtn" for="customerInput">📁 Kundenbilder hochladen</label>
-        <input type="file" id="customerInput" accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp" multiple onchange="handleFiles(this)" style="display:none">
+        <button class="album-btn" id="albumBtn" onclick="document.getElementById('customerInput').click()">📁 Kundenbilder hochladen</button>
+        <input type="file" id="customerInput" accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp" multiple style="display:none">
 
         <div class="thumb-strip" id="thumbStrip"></div>
         <button class="grade-now-btn" id="gradeNowBtn" style="display:none" onclick="analyze()">Jetzt bewerten</button>
@@ -903,6 +903,9 @@ NUR JSON:
         function gradeName(g) {
             return { Premium:'Premium', A:'Sehr gut', B:'Gut', C:'Akzeptabel', Unacceptable:'Nicht akzeptabel' }[g] || g;
         }
+
+        // ===== EVENT LISTENERS =====
+        document.getElementById('customerInput').addEventListener('change', function() { handleFiles(this); });
 
         // ===== START =====
         if (sessionStorage.getItem('grading_auth') === '1') init();
