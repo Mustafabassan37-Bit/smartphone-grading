@@ -602,10 +602,11 @@
             if (photos.length >= MAX_PHOTOS) analyze();
         }
 
-        // ===== AUTO-DETECT (TensorFlow.js) =====
+        // ===== AUTO-DETECT (TensorFlow.js + Timer) =====
         let cocoModel = null;
         let autoDetectRunning = false;
         let autoDetectPaused = false;
+        let countdownTimer = null;
 
         async function loadDetector() {
             try {
@@ -630,26 +631,50 @@
             if (!autoDetectRunning) return;
 
             if (!autoDetectPaused && !analyzing && photos.length < MAX_PHOTOS) {
-                try {
-                    const video = document.getElementById('video');
-                    if (video.readyState >= 2) {
-                        const predictions = await cocoModel.detect(video);
-                        const phone = predictions.find(p => p.class === 'cell phone' && p.score > 0.5);
-
-                        if (phone) {
-                            // Handy erkannt - Foto machen!
-                            takePhoto();
+                // Foto 1-2 (Vorder/Rueckseite): KI-Erkennung
+                if (photos.length < 2) {
+                    try {
+                        const video = document.getElementById('video');
+                        if (video.readyState >= 2) {
+                            const predictions = await cocoModel.detect(video);
+                            const phone = predictions.find(p => p.class === 'cell phone' && p.score > 0.4);
+                            if (phone) {
+                                takePhoto();
+                            }
                         }
-                    }
-                } catch (e) {}
+                    } catch (e) {}
+                }
+                // Foto 3-6 (Kanten): Countdown-Timer
+                else if (!countdownTimer) {
+                    startCountdown();
+                }
             }
 
-            // Alle 1.5 Sekunden pruefen
             setTimeout(detectLoop, 1500);
+        }
+
+        function startCountdown() {
+            let sec = 3;
+            const shot = SHOTS[photos.length];
+            document.getElementById('stepText').textContent = shot.name + ' - ' + sec;
+            countdownTimer = setInterval(() => {
+                sec--;
+                if (sec > 0) {
+                    document.getElementById('stepText').textContent = shot.name + ' - ' + sec;
+                } else {
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
+                    takePhoto();
+                }
+            }, 1000);
         }
 
         function stopAutoDetect() {
             autoDetectRunning = false;
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
         }
 
         // ===== FILE UPLOAD =====
@@ -942,6 +967,7 @@ NUR JSON:
             document.getElementById('resultArea').innerHTML = '';
             document.getElementById('errorMsg').innerHTML = '';
             autoDetectPaused = false;
+            countdownTimer = null;
             if (cameraMode && cocoModel) startAutoDetect();
             updateUI();
         }
