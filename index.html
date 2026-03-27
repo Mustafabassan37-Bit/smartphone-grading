@@ -604,11 +604,23 @@
                 if (photos.length >= MAX_PHOTOS) break;
                 try {
                     let blob = file;
-                    // HEIC/HEIF konvertieren
+                    // HEIC/HEIF konvertieren - prüfe Name, Type und auch unbekannte Types
                     const name = file.name.toLowerCase();
-                    if (name.endsWith('.heic') || name.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
-                        blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+                    const isHeic = name.endsWith('.heic') || name.endsWith('.heif')
+                        || file.type === 'image/heic' || file.type === 'image/heif'
+                        || file.type === '' || file.type === 'application/octet-stream';
+
+                    if (isHeic && !file.type.startsWith('image/jpeg') && !file.type.startsWith('image/png')) {
+                        try {
+                            const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+                            blob = Array.isArray(converted) ? converted[0] : converted;
+                        } catch (heicErr) {
+                            // Nicht HEIC oder Konvertierung fehlgeschlagen - versuche direkt zu laden
+                            console.warn('HEIC Konvertierung fehlgeschlagen, versuche direkt:', heicErr);
+                            blob = file;
+                        }
                     }
+
                     const dataUrl = await new Promise((resolve, reject) => {
                         const reader = new FileReader();
                         reader.onload = e => {
@@ -623,7 +635,7 @@
                                 c.getContext('2d').drawImage(img, 0, 0, w, h);
                                 resolve(c.toDataURL('image/jpeg', 0.9));
                             };
-                            img.onerror = reject;
+                            img.onerror = () => reject(new Error('Bild konnte nicht geladen werden: ' + file.name));
                             img.src = e.target.result;
                         };
                         reader.readAsDataURL(blob);
@@ -631,7 +643,8 @@
                     photos.push(dataUrl);
                     updateUI();
                 } catch (e) {
-                    console.error('Fehler beim Laden:', file.name, e);
+                    console.error('Fehler:', file.name, e);
+                    document.getElementById('errorMsg').innerHTML = `<div class="error-msg">Fehler bei ${file.name}: ${e.message}</div>`;
                 }
             }
             if (photos.length >= MAX_PHOTOS) analyze();
