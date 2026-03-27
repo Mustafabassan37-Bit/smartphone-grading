@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smartphone Grading Tool</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --premium: #6C63FF;
+            --grade-a: #00C853;
+            --grade-b: #FFD600;
+            --grade-c: #FF9100;
+            --unacceptable: #FF1744;
+            --bg: #0F0F1A;
+            --card: #1A1A2E;
+            --text: #EEEEF0;
+            --text-muted: #8888A0;
+            --border: #2A2A44;
+            --accent: #6C63FF;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow: hidden;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 8px 10px;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            flex-shrink: 0;
+        }
+
+        .header h1 { font-size: 16px; font-weight: 700; }
+
+        .counter {
+            font-size: 12px;
+            color: var(--text-muted);
+            background: var(--card);
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .counter strong { color: var(--accent); }
+
+        .export-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        /* Big instruction above camera */
+        .instruction {
+            text-align: center;
+            padding: 10px 0 8px;
+            flex-shrink: 0;
+        }
+
+        .instruction .step-num {
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .instruction .step-text {
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        .instruction .step-icon {
+            font-size: 36px;
+        }
+
+        /* Camera */
+        .camera-wrap {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #000;
+            flex: 1;
+            min-height: 200px;
+        }
+
+        .camera-wrap video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.5));
+        }
+
+        .shutter {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            border: 4px solid white;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.1s;
+            position: relative;
+        }
+
+        .shutter:active { transform: scale(0.9); background: rgba(255,255,255,0.5); }
+        .shutter-inner { position: absolute; inset: 4px; border-radius: 50%; background: white; }
+
+        .flash {
+            position: absolute;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.05s;
+        }
+
+        .flash.active { opacity: 0.6; transition: none; }
+
+        .cam-switch {
+            position: absolute;
+            bottom: 14px;
+            right: 14px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+        }
+
+        /* Fallback Upload */
+        .upload-fallback {
+            border-radius: 16px;
+            background: var(--card);
+            border: 2px dashed var(--border);
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-fallback:hover { border-color: var(--accent); }
+        .upload-fallback .icon { font-size: 36px; margin-bottom: 6px; }
+        .upload-fallback p { font-size: 15px; font-weight: 600; }
+        .upload-fallback small { color: var(--text-muted); font-size: 12px; }
+
+        .upload-hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 6px 0;
+            flex-shrink: 0;
+        }
+
+        input[type="file"] { display: none; }
+
+        /* Thumb strip */
+        .thumb-strip {
+            display: flex;
+            gap: 3px;
+            padding: 6px 0;
+            flex-shrink: 0;
+            min-height: 44px;
+            align-items: center;
+        }
+
+        .thumb-strip .thumb {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            overflow: hidden;
+            flex-shrink: 0;
+            border: 2px solid var(--border);
+        }
+
+        .thumb-strip .thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .thumb-strip .thumb.latest { border-color: var(--accent); }
+
+        .analyzing-bar {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .mini-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        /* Result Banner */
+        .result-banner {
+            flex-shrink: 0;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 6px;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-banner-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .result-grade-big {
+            font-size: 36px;
+            font-weight: 800;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .result-info h3 { font-size: 14px; font-weight: 600; }
+        .result-info p { font-size: 12px; opacity: 0.8; margin-top: 2px; line-height: 1.3; }
+
+        .result-areas-row { display: flex; gap: 4px; flex-wrap: wrap; }
+
+        .result-area-chip {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.25);
+        }
+
+        .defect-list {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        .result-next {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            background: white;
+            color: #000;
+            margin-top: 10px;
+        }
+
+        .banner-premium { background: linear-gradient(135deg, #6C63FF44, #6C63FF88); color: #D0CDFF; }
+        .banner-a { background: linear-gradient(135deg, #00C85344, #00C85388); color: #A0F0C0; }
+        .banner-b { background: linear-gradient(135deg, #FFD60044, #FFD60088); color: #FFF0A0; }
+        .banner-c { background: linear-gradient(135deg, #FF910044, #FF910088); color: #FFD0A0; }
+        .banner-unacceptable { background: linear-gradient(135deg, #FF174444, #FF174488); color: #FFA0A0; }
+
+        .g-premium { color: var(--premium); }
+        .g-a { color: var(--grade-a); }
+        .g-b { color: var(--grade-b); }
+        .g-c { color: var(--grade-c); }
+        .g-unacceptable { color: var(--unacceptable); }
+
+        /* History compact */
+        .history-compact {
+            flex-shrink: 0;
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            padding: 4px 0;
+        }
+
+        .history-chip {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: var(--card);
+            border: 1px solid var(--border);
+        }
+
+        .error-msg {
+            background: #FF174433;
+            border-radius: 10px;
+            padding: 10px;
+            color: #FF6B6B;
+            font-size: 12px;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        /* PIN Screen */
+        .pin-screen {
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 20px;
+        }
+
+        .pin-screen h2 { font-size: 22px; font-weight: 700; }
+        .pin-screen p { color: var(--text-muted); font-size: 14px; }
+
+        .pin-input {
+            width: 200px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            font-size: 24px;
+            text-align: center;
+            letter-spacing: 8px;
+            outline: none;
+            -webkit-text-security: disc;
+        }
+
+        .pin-input:focus { border-color: var(--accent); }
+
+        .pin-error {
+            color: var(--unacceptable);
+            font-size: 13px;
+            min-height: 20px;
+        }
+
+        .pin-btn {
+            padding: 14px 40px;
+            border: none;
+            border-radius: 12px;
+            background: var(--accent);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- PIN Screen -->
+    <div class="pin-screen" id="pinScreen">
+        <div style="font-size:48px">🔒</div>
+        <h2>Smartphone Grading</h2>
+        <p>PIN eingeben um fortzufahren</p>
+        <input class="pin-input" id="pinInput" type="tel" maxlength="4" placeholder="····" autofocus onkeydown="if(event.key==='Enter')checkPin()">
+        <div class="pin-error" id="pinError"></div>
+        <button class="pin-btn" onclick="checkPin()">Entsperren</button>
+    </div>
+
+    <div class="container" id="appContainer" style="display:none">
+        <div class="header">
+            <h1>📱 Grading</h1>
+            <span class="counter" id="counter">Bewertet: <strong>0</strong></span>
+            <button class="export-btn" id="exportBtn" onclick="exportCSV()" style="display:none">CSV</button>
+        </div>
+
+        <!-- Big instruction -->
+        <div class="instruction" id="instruction">
+            <div class="step-num" id="stepNum">Foto 1 / 6</div>
+            <div class="step-icon" id="stepIcon">📱</div>
+            <div class="step-text" id="stepText">VORDERSEITE</div>
+        </div>
+
+        <!-- Live Camera -->
+        <div class="camera-wrap" id="cameraWrap" style="display:none">
+            <video id="video" autoplay playsinline muted></video>
+            <div class="flash" id="flash"></div>
+            <div class="camera-overlay">
+                <div class="shutter" onclick="takePhoto()"><div class="shutter-inner"></div></div>
+            </div>
+            <button class="cam-switch" onclick="switchCamera()">🔄</button>
+        </div>
+
+        <!-- Fallback Upload -->
+        <div class="upload-fallback" id="uploadFallback" style="display:none" onclick="document.getElementById('fileInput').click()">
+            <div class="icon">📸</div>
+            <p>Foto aufnehmen</p>
+            <small>Tippen um Kamera zu oeffnen</small>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" capture="environment" multiple onchange="handleFiles(this)">
+        <div class="upload-hint" id="uploadHint" style="display:none">Oder: <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('fileInput').removeAttribute('capture');document.getElementById('fileInput').click()">Aus Album waehlen</a></div>
+
+        <div class="thumb-strip" id="thumbStrip"></div>
+        <div id="errorMsg"></div>
+        <div id="resultArea"></div>
+        <div class="history-compact" id="historyBar"></div>
+    </div>
+
+    <canvas id="snapCanvas" style="display:none"></canvas>
+
+    <script>
+        // PIN: aendere diesen Code fuer dein Team
+        const APP_PIN = '1991';
+
+        function checkPin() {
+            const input = document.getElementById('pinInput').value;
+            if (input === APP_PIN) {
+                document.getElementById('pinScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'flex';
+                sessionStorage.setItem('grading_auth', '1');
+                init();
+            } else {
+                document.getElementById('pinError').textContent = 'Falscher PIN';
+                document.getElementById('pinInput').value = '';
+                document.getElementById('pinInput').focus();
+            }
+        }
+
+        // Auto-login wenn schon authentifiziert in dieser Session
+        if (sessionStorage.getItem('grading_auth') === '1') {
+            document.getElementById('pinScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'flex';
+        }
+
+        // API Key wird lokal im Browser gespeichert (nach erster Eingabe)
+        let OPENAI_API_KEY = localStorage.getItem('grading_api_key') || '';
+
+        function promptApiKey() {
+            if (OPENAI_API_KEY) return true;
+            const key = prompt('OpenAI API Key eingeben (wird lokal gespeichert):');
+            if (key && key.startsWith('sk-')) {
+                OPENAI_API_KEY = key;
+                localStorage.setItem('grading_api_key', key);
+                return true;
+            }
+            return false;
+        }
+
+        const SHOTS = [
+            { name: 'VORDERSEITE', icon: '📱', desc: 'Display fotografieren' },
+            { name: 'RUECKSEITE', icon: '🔄', desc: 'Handy umdrehen' },
+            { name: 'LINKE SEITE', icon: '👈', desc: 'Linke Kante zeigen' },
+            { name: 'RECHTE SEITE', icon: '👉', desc: 'Rechte Kante zeigen' },
+            { name: 'OBERSEITE', icon: '👆', desc: 'Obere Kante zeigen' },
+            { name: 'UNTERSEITE', icon: '👇', desc: 'Untere Kante zeigen' }
+        ];
+        const MAX_PHOTOS = 6;
+        let photos = [];
+        let results = [];
+        let deviceNum = 0;
+        let analyzing = false;
+        let cameraMode = false;
+        let facingMode = 'environment';
+        let stream = null;
+
+        // ===== INIT =====
+        async function init() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
+                    audio: false
+                });
+                document.getElementById('video').srcObject = stream;
+                document.getElementById('cameraWrap').style.display = '';
+                cameraMode = true;
+                enableTorch();
+            } catch (e) {
+                document.getElementById('uploadFallback').style.display = '';
+                document.getElementById('uploadHint').style.display = '';
+                cameraMode = false;
+            }
+            updateUI();
+        }
+
+        async function enableTorch() {
+            try {
+                const track = stream.getVideoTracks()[0];
+                const caps = track.getCapabilities();
+                if (caps.torch) {
+                    await track.applyConstraints({ advanced: [{ torch: true }] });
+                }
+            } catch (e) {}
+        }
+
+        async function switchCamera() {
+            facingMode = facingMode === 'environment' ? 'user' : 'environment';
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
+                    audio: false
+                });
+                document.getElementById('video').srcObject = stream;
+                enableTorch();
+            } catch (e) {}
+        }
+
+        // ===== TAKE PHOTO =====
+        function takePhoto() {
+            if (analyzing || photos.length >= MAX_PHOTOS) return;
+
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('snapCanvas');
+            const size = 1200;
+            let w = video.videoWidth, h = video.videoHeight;
+            if (w > h && w > size) { h = h * size / w; w = size; }
+            else if (h > size) { w = w * size / h; h = size; }
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+            photos.push(canvas.toDataURL('image/jpeg', 0.9));
+
+            const flash = document.getElementById('flash');
+            flash.classList.add('active');
+            setTimeout(() => flash.classList.remove('active'), 80);
+
+            updateUI();
+            if (photos.length >= MAX_PHOTOS) analyze();
+        }
+
+        // ===== FILE UPLOAD =====
+        function handleFiles(input) {
+            const files = Array.from(input.files);
+            if (!files.length) return;
+
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = new Image();
+                    img.onload = () => {
+                        if (photos.length >= MAX_PHOTOS) return;
+                        const c = document.createElement('canvas');
+                        const size = 1200;
+                        let w = img.width, h = img.height;
+                        if (w > h && w > size) { h = h * size / w; w = size; }
+                        else if (h > size) { w = w * size / h; h = size; }
+                        c.width = w; c.height = h;
+                        c.getContext('2d').drawImage(img, 0, 0, w, h);
+                        photos.push(c.toDataURL('image/jpeg', 0.9));
+                        updateUI();
+                        if (photos.length >= MAX_PHOTOS) analyze();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+            input.value = '';
+            input.setAttribute('capture', 'environment');
+        }
+
+        // ===== UI UPDATE =====
+        function updateUI() {
+            const idx = Math.min(photos.length, MAX_PHOTOS - 1);
+            const shot = SHOTS[idx];
+            const instr = document.getElementById('instruction');
+
+            if (analyzing) {
+                instr.querySelector('#stepNum').textContent = 'Wird analysiert...';
+                instr.querySelector('#stepIcon').textContent = '🔍';
+                instr.querySelector('#stepText').textContent = 'BITTE WARTEN';
+            } else if (photos.length >= MAX_PHOTOS) {
+                instr.querySelector('#stepNum').textContent = 'Fertig!';
+                instr.querySelector('#stepIcon').textContent = '✅';
+                instr.querySelector('#stepText').textContent = '6/6 FOTOS';
+            } else {
+                instr.querySelector('#stepNum').textContent = `Foto ${photos.length + 1} / ${MAX_PHOTOS}`;
+                instr.querySelector('#stepIcon').textContent = shot.icon;
+                instr.querySelector('#stepText').textContent = shot.name;
+            }
+
+            // Thumbs
+            let html = photos.map((p, i) =>
+                `<div class="thumb ${i === photos.length - 1 ? 'latest' : ''}"><img src="${p}"></div>`
+            ).join('');
+            if (analyzing) html += `<div class="analyzing-bar"><div class="mini-spinner"></div></div>`;
+            document.getElementById('thumbStrip').innerHTML = html;
+
+            // Fallback text
+            if (!cameraMode && photos.length < MAX_PHOTOS) {
+                const fb = document.getElementById('uploadFallback');
+                fb.querySelector('p').textContent = shot.name + ' fotografieren';
+                fb.querySelector('small').textContent = shot.desc + ` (${photos.length}/${MAX_PHOTOS})`;
+            }
+        }
+
+        // ===== GRADING LOGIC (deterministic) =====
+        function calculateGrade(defects) {
+            // Score each area: 0=perfect, 1=minimal, 2=light, 3=moderate, 4=heavy, 5=severe
+            const areaScores = {
+                screen: defects.screen_score || 0,
+                body: defects.body_score || 0,
+                edges: defects.edges_score || 0,
+                camera: defects.camera_score || 0
+            };
+
+            function scoreToGrade(score) {
+                if (score === 0) return 'Premium';
+                if (score === 1) return 'A';
+                if (score === 2) return 'B';
+                if (score <= 3) return 'C';
+                return 'Unacceptable';
+            }
+
+            const gradeOrder = ['Premium', 'A', 'B', 'C', 'Unacceptable'];
+            const areaGrades = {};
+            let worstIdx = 0;
+
+            for (const [area, score] of Object.entries(areaScores)) {
+                const g = scoreToGrade(score);
+                areaGrades[area] = g;
+                const idx = gradeOrder.indexOf(g);
+                if (idx > worstIdx) worstIdx = idx;
+            }
+
+            return {
+                overall: gradeOrder[worstIdx],
+                areas: areaGrades
+            };
+        }
+
+        // ===== ANALYZE =====
+        async function analyze() {
+            if (!promptApiKey()) { photos = []; updateUI(); return; }
+            analyzing = true;
+            updateUI();
+            document.getElementById('errorMsg').innerHTML = '';
+            document.getElementById('resultArea').innerHTML = '';
+
+            // STEP 1: KI erkennt nur Defekte objektiv
+            const prompt = `Du bist ein Smartphone-Inspektor. Du erhaeltst 6 Fotos: 1)Vorderseite 2)Rueckseite 3)Links 4)Rechts 5)Oben 6)Unten.
+
+AUFGABE: Analysiere jedes Foto und zaehle OBJEKTIV alle sichtbaren Defekte. Gib fuer jeden Bereich einen Score von 0-5:
+
+SCORING:
+0 = Perfekt, absolut keine Spuren, wie neu aus der Verpackung
+1 = Bei genauem Hinsehen minimale Spuren, aus 30cm nicht sichtbar
+2 = Leichte Kratzer oder minimaler Abrieb, aus 30cm knapp sichtbar
+3 = Deutliche Kratzer, kleine Dellen, sichtbarer Abrieb
+4 = Viele Kratzer, Dellen, starker Abrieb, Verfaerbungen
+5 = Tiefe Kratzer, Risse, Spruenge, Schmelzspuren, Bruch
+
+Bewerte STRENG und KONSISTENT. Im Zweifel hoeher scoren.
+
+NUR JSON:
+{
+"screen_score": 0-5,
+"screen_defects": "was genau sichtbar ist oder 'keine'",
+"body_score": 0-5,
+"body_defects": "was genau sichtbar ist oder 'keine'",
+"edges_score": 0-5,
+"edges_defects": "was genau sichtbar ist oder 'keine'",
+"camera_score": 0-5,
+"camera_defects": "was genau sichtbar ist oder 'keine'",
+"confidence": 50-100,
+"confidence_reason": "Warum sicher/unsicher (z.B. Fotos unscharf, Beleuchtung schlecht, etc.)"
+}`;
+
+            const content = [];
+            photos.forEach((p, i) => {
+                content.push({ type: 'text', text: `Foto ${i+1}: ${SHOTS[i].name}` });
+                content.push({ type: 'image_url', image_url: { url: p, detail: 'high' } });
+            });
+
+            try {
+                const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + OPENAI_API_KEY },
+                    body: JSON.stringify({
+                        model: 'gpt-4o',
+                        messages: [{ role: 'system', content: prompt }, { role: 'user', content }],
+                        max_tokens: 400,
+                        temperature: 0.1
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error?.message || 'API ' + res.status);
+                }
+
+                const data = await res.json();
+                let text = data.choices[0].message.content;
+                const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+                if (m) text = m[1];
+                const defects = JSON.parse(text.trim());
+
+                // STEP 2: Deterministic grading in code
+                const grading = calculateGrade(defects);
+
+                deviceNum++;
+                const r = {
+                    num: deviceNum,
+                    grade: grading.overall,
+                    body: grading.areas.body,
+                    screen: grading.areas.screen,
+                    edges: grading.areas.edges,
+                    camera: grading.areas.camera,
+                    defects: defects,
+                    summary: buildSummary(defects)
+                };
+                results.push(r);
+                showResult(r);
+            } catch (err) {
+                document.getElementById('errorMsg').innerHTML = `<div class="error-msg">${err.message}</div>`;
+            }
+
+            analyzing = false;
+            updateUI();
+        }
+
+        function buildSummary(d) {
+            const parts = [];
+            if (d.screen_defects && d.screen_defects !== 'keine') parts.push('Screen: ' + d.screen_defects);
+            if (d.body_defects && d.body_defects !== 'keine') parts.push('Body: ' + d.body_defects);
+            if (d.edges_defects && d.edges_defects !== 'keine') parts.push('Kanten: ' + d.edges_defects);
+            if (d.camera_defects && d.camera_defects !== 'keine') parts.push('Kamera: ' + d.camera_defects);
+            return parts.length ? parts.join(' | ') : 'Keine Defekte erkannt - wie neu.';
+        }
+
+        // ===== RESULT =====
+        function showResult(r) {
+            const gc = gradeClass(r.grade);
+            const areas = [['Body', r.body, r.defects.body_score], ['Screen', r.screen, r.defects.screen_score], ['Kanten', r.edges, r.defects.edges_score], ['Kamera', r.camera, r.defects.camera_score]];
+
+            const conf = r.defects.confidence || 0;
+            const confColor = conf >= 80 ? 'var(--grade-a)' : conf >= 60 ? 'var(--grade-b)' : 'var(--unacceptable)';
+            const confWarning = conf < 70 ? `<div style="margin-top:8px;padding:8px;border-radius:8px;background:rgba(255,23,68,0.2);font-size:12px;">⚠️ Niedrige Confidence (${conf}%) - Manuell pruefen! ${r.defects.confidence_reason || ''}</div>` : '';
+
+            document.getElementById('resultArea').innerHTML = `
+                <div class="result-banner banner-${gc}">
+                    <div class="result-banner-top">
+                        <div class="result-grade-big">${r.grade === 'Unacceptable' ? '!' : r.grade}</div>
+                        <div class="result-info">
+                            <h3>#${r.num} ${gradeName(r.grade)} <span style="font-size:12px;color:${confColor}">${conf}%</span></h3>
+                            <p>${r.summary}</p>
+                        </div>
+                    </div>
+                    <div class="result-areas-row">
+                        ${areas.map(([n, g, s]) => `<span class="result-area-chip">${n}: <strong class="g-${gradeClass(g)}">${g}</strong> (${s}/5)</span>`).join('')}
+                    </div>
+                    ${confWarning}
+                    <button class="result-next" onclick="nextDevice()">Naechstes Geraet →</button>
+                </div>`;
+
+            updateHistory();
+        }
+
+        function nextDevice() {
+            photos = [];
+            document.getElementById('resultArea').innerHTML = '';
+            document.getElementById('errorMsg').innerHTML = '';
+            updateUI();
+        }
+
+        // ===== HISTORY =====
+        function updateHistory() {
+            document.getElementById('counter').innerHTML = `Bewertet: <strong>${results.length}</strong>`;
+            document.getElementById('exportBtn').style.display = results.length ? '' : 'none';
+            document.getElementById('historyBar').innerHTML = results.slice().reverse().slice(0, 30).map(r =>
+                `<span class="history-chip">#${r.num} <strong class="g-${gradeClass(r.grade)}">${r.grade}</strong></span>`
+            ).join('');
+        }
+
+        // ===== EXPORT =====
+        function exportCSV() {
+            let csv = 'Nr,Grade,Body,Body_Score,Screen,Screen_Score,Kanten,Kanten_Score,Kamera,Kamera_Score,Body_Defekte,Screen_Defekte,Kanten_Defekte,Kamera_Defekte\n';
+            results.forEach(r => {
+                const d = r.defects;
+                csv += `${r.num},${r.grade},${r.body},${d.body_score},${r.screen},${d.screen_score},${r.edges},${d.edges_score},${r.camera},${d.camera_score},"${d.body_defects}","${d.screen_defects}","${d.edges_defects}","${d.camera_defects}"\n`;
+            });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
+            a.download = 'grading_' + new Date().toISOString().slice(0, 10) + '.csv';
+            a.click();
+        }
+
+        // ===== HELPERS =====
+        function gradeClass(g) {
+            return { Premium:'premium', A:'a', B:'b', C:'c', Unacceptable:'unacceptable' }[g] || 'c';
+        }
+        function gradeName(g) {
+            return { Premium:'Premium', A:'Sehr gut', B:'Gut', C:'Akzeptabel', Unacceptable:'Nicht akzeptabel' }[g] || g;
+        }
+
+        // ===== START =====
+        if (sessionStorage.getItem('grading_auth') === '1') init();
+    </script>
+</body>
+</html>
