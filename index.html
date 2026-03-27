@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Smartphone Grading Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -463,7 +464,8 @@
         <div class="upload-hint" id="uploadHint" style="display:none">Oder: <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('albumInput').click()">Aus Album waehlen</a></div>
 
         <!-- Kundenbilder Upload - immer sichtbar -->
-        <button class="album-btn" id="albumBtn" onclick="document.getElementById('albumInput').click()">📁 Kundenbilder hochladen</button>
+        <label class="album-btn" id="albumBtn" for="customerInput">📁 Kundenbilder hochladen</label>
+        <input type="file" id="customerInput" accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp" multiple onchange="handleFiles(this)" style="display:none">
 
         <div class="thumb-strip" id="thumbStrip"></div>
         <button class="grade-now-btn" id="gradeNowBtn" style="display:none" onclick="analyze()">Jetzt bewerten</button>
@@ -594,33 +596,47 @@
         }
 
         // ===== FILE UPLOAD =====
-        function handleFiles(input) {
+        async function handleFiles(input) {
             const files = Array.from(input.files);
             if (!files.length) return;
 
-            files.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const img = new Image();
-                    img.onload = () => {
-                        if (photos.length >= MAX_PHOTOS) return;
-                        const c = document.createElement('canvas');
-                        const size = 1200;
-                        let w = img.width, h = img.height;
-                        if (w > h && w > size) { h = h * size / w; w = size; }
-                        else if (h > size) { w = w * size / h; h = size; }
-                        c.width = w; c.height = h;
-                        c.getContext('2d').drawImage(img, 0, 0, w, h);
-                        photos.push(c.toDataURL('image/jpeg', 0.9));
-                        updateUI();
-                        if (photos.length >= MAX_PHOTOS) analyze();
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            });
+            for (const file of files) {
+                if (photos.length >= MAX_PHOTOS) break;
+                try {
+                    let blob = file;
+                    // HEIC/HEIF konvertieren
+                    const name = file.name.toLowerCase();
+                    if (name.endsWith('.heic') || name.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
+                        blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+                    }
+                    const dataUrl = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = e => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const c = document.createElement('canvas');
+                                const size = 1200;
+                                let w = img.width, h = img.height;
+                                if (w > h && w > size) { h = h * size / w; w = size; }
+                                else if (h > size) { w = w * size / h; h = size; }
+                                c.width = w; c.height = h;
+                                c.getContext('2d').drawImage(img, 0, 0, w, h);
+                                resolve(c.toDataURL('image/jpeg', 0.9));
+                            };
+                            img.onerror = reject;
+                            img.src = e.target.result;
+                        };
+                        reader.readAsDataURL(blob);
+                    });
+                    photos.push(dataUrl);
+                    updateUI();
+                } catch (e) {
+                    console.error('Fehler beim Laden:', file.name, e);
+                }
+            }
+            if (photos.length >= MAX_PHOTOS) analyze();
             input.value = '';
-            input.setAttribute('capture', 'environment');
+            if (input.hasAttribute('capture')) input.setAttribute('capture', 'environment');
         }
 
         // ===== UI UPDATE =====
