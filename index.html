@@ -439,15 +439,23 @@
     <canvas id="snapCanvas" style="display:none"></canvas>
 
     <script>
-        // PIN: aendere diesen Code fuer dein Team
-        const APP_PIN = '1991';
+        // Verschluesselter API Key (XOR mit PIN)
+        const ENC_KEY = [66,82,20,65,67,86,83,28,119,125,75,117,7,85,11,94,114,106,76,75,127,73,0,70,120,12,113,82,85,102,72,85,104,96,86,94,95,84,0,116,88,88,86,101,126,85,107,64,121,122,105,92,122,120,77,6,107,77,84,102,9,73,12,68,88,125,76,95,101,118,75,119,90,15,11,86,69,15,83,84,67,14,109,2,115,85,91,90,119,115,122,112,4,67,102,97,93,20,107,72,127,75,78,82,118,87,91,85,126,104,126,125,71,10,12,66,87,81,75,117,9,127,15,105,86,95,126,121,91,1,104,66,70,127,88,116,88,109,97,66,99,113,82,118,121,120,64,97,114,93,72,75,105,67,11,83,2,65,20,123,72,73,9,112];
+
+        function decryptKey(pin) {
+            return ENC_KEY.map((c, i) => String.fromCharCode(c ^ pin.charCodeAt(i % pin.length))).join('');
+        }
+
+        let OPENAI_API_KEY = '';
 
         function checkPin() {
             const input = document.getElementById('pinInput').value;
-            if (input === APP_PIN) {
+            const key = decryptKey(input);
+            if (key.startsWith('sk-')) {
+                OPENAI_API_KEY = key;
                 document.getElementById('pinScreen').style.display = 'none';
                 document.getElementById('appContainer').style.display = 'flex';
-                sessionStorage.setItem('grading_auth', '1');
+                sessionStorage.setItem('grading_auth', input);
                 init();
             } else {
                 document.getElementById('pinError').textContent = 'Falscher PIN';
@@ -457,23 +465,14 @@
         }
 
         // Auto-login wenn schon authentifiziert in dieser Session
-        if (sessionStorage.getItem('grading_auth') === '1') {
-            document.getElementById('pinScreen').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'flex';
-        }
-
-        // API Key wird lokal im Browser gespeichert (nach erster Eingabe)
-        let OPENAI_API_KEY = localStorage.getItem('grading_api_key') || '';
-
-        function promptApiKey() {
-            if (OPENAI_API_KEY) return true;
-            const key = prompt('OpenAI API Key eingeben (wird lokal gespeichert):');
-            if (key && key.startsWith('sk-')) {
+        const savedPin = sessionStorage.getItem('grading_auth');
+        if (savedPin) {
+            const key = decryptKey(savedPin);
+            if (key.startsWith('sk-')) {
                 OPENAI_API_KEY = key;
-                localStorage.setItem('grading_api_key', key);
-                return true;
+                document.getElementById('pinScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'flex';
             }
-            return false;
         }
 
         const SHOTS = [
@@ -660,7 +659,6 @@
 
         // ===== ANALYZE =====
         async function analyze() {
-            if (!promptApiKey()) { photos = []; updateUI(); return; }
             analyzing = true;
             updateUI();
             document.getElementById('errorMsg').innerHTML = '';
