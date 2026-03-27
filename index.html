@@ -327,6 +327,20 @@
             border: 1px solid var(--border);
         }
 
+        .grade-now-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            background: var(--accent);
+            color: white;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
         .error-msg {
             background: #FF174433;
             border-radius: 10px;
@@ -419,6 +433,7 @@
                 <div class="shutter" onclick="takePhoto()"><div class="shutter-inner"></div></div>
             </div>
             <button class="cam-switch" onclick="switchCamera()">🔄</button>
+            <button class="cam-switch" style="left:14px;right:auto;bottom:14px" onclick="document.getElementById('albumInput').click()">📁</button>
         </div>
 
         <!-- Fallback Upload -->
@@ -428,9 +443,11 @@
             <small>Tippen um Kamera zu oeffnen</small>
         </div>
         <input type="file" id="fileInput" accept="image/*" capture="environment" multiple onchange="handleFiles(this)">
-        <div class="upload-hint" id="uploadHint" style="display:none">Oder: <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('fileInput').removeAttribute('capture');document.getElementById('fileInput').click()">Aus Album waehlen</a></div>
+        <input type="file" id="albumInput" accept="image/*" multiple onchange="handleFiles(this)">
+        <div class="upload-hint" id="uploadHint" style="display:none">Oder: <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('albumInput').click()">Aus Album waehlen</a></div>
 
         <div class="thumb-strip" id="thumbStrip"></div>
+        <button class="grade-now-btn" id="gradeNowBtn" style="display:none" onclick="analyze()">Jetzt bewerten</button>
         <div id="errorMsg"></div>
         <div id="resultArea"></div>
         <div class="history-compact" id="historyBar"></div>
@@ -620,6 +637,10 @@
                 fb.querySelector('p').textContent = shot.name + ' fotografieren';
                 fb.querySelector('small').textContent = shot.desc + ` (${photos.length}/${MAX_PHOTOS})`;
             }
+
+            // "Jetzt bewerten" Button bei Kundenfotos (weniger als 6 aber mindestens 1)
+            const gradeBtn = document.getElementById('gradeNowBtn');
+            gradeBtn.style.display = (photos.length > 0 && photos.length < MAX_PHOTOS && !analyzing) ? '' : 'none';
         }
 
         // ===== GRADING LOGIC (deterministic) =====
@@ -664,20 +685,45 @@
             document.getElementById('errorMsg').innerHTML = '';
             document.getElementById('resultArea').innerHTML = '';
 
-            // STEP 1: KI erkennt nur Defekte objektiv
-            const prompt = `Du bist ein Smartphone-Inspektor. Du erhaeltst 6 Fotos: 1)Vorderseite 2)Rueckseite 3)Links 4)Rechts 5)Oben 6)Unten.
+            // STEP 1: KI erkennt nur Defekte objektiv (basierend auf Condition Handbook)
+            const prompt = `Du bist ein Smartphone-Grading-Inspektor fuer den Refurbished-Markt. Du erhaeltst ${photos.length} Fotos eines Smartphones. Erkenne selbst welchen Bereich jedes Foto zeigt.
 
-AUFGABE: Analysiere jedes Foto und zaehle OBJEKTIV alle sichtbaren Defekte. Gib fuer jeden Bereich einen Score von 0-5:
+DEINE AUFGABE: Bewerte den VISUELLEN Zustand anhand der folgenden offiziellen Grading-Kriterien. Gib fuer jeden Bereich einen Score von 0-5.
 
-SCORING:
-0 = Perfekt, absolut keine Spuren, wie neu aus der Verpackung
-1 = Bei genauem Hinsehen minimale Spuren, aus 30cm nicht sichtbar
-2 = Leichte Kratzer oder minimaler Abrieb, aus 30cm knapp sichtbar
-3 = Deutliche Kratzer, kleine Dellen, sichtbarer Abrieb
-4 = Viele Kratzer, Dellen, starker Abrieb, Verfaerbungen
-5 = Tiefe Kratzer, Risse, Spruenge, Schmelzspuren, Bruch
+OFFIZIELLE GRADING-KRITERIEN (Condition Handbook Smartphones):
 
-Bewerte STRENG und KONSISTENT. Im Zweifel hoeher scoren.
+SCREEN-BEWERTUNG:
+- Score 0 (Premium): Wie neu, keine Gebrauchsspuren
+- Score 1 (Grade A): Wie neu, keine Gebrauchsspuren
+- Score 2 (Grade B): Feine Mikrokratzer moeglich, die bei EINGESCHALTETEM Display NICHT sichtbar sind
+- Score 3 (Grade C): Feine Mikrokratzer moeglich, die bei eingeschaltetem Display nicht sichtbar sind
+- Score 4-5 (Unacceptable): Kratzer oder Pixelfehler die bei eingeschaltetem Screen sichtbar sind. Tiefe Kratzer, Risse, Spruenge
+
+BODY-BEWERTUNG (Rueckseite):
+- Score 0 (Premium): Keine sichtbaren Gebrauchsspuren. Frei von Kratzern, Dellen, Makeln. Nicht von neu unterscheidbar
+- Score 1 (Grade A): Keine Kratzer, Dellen oder Gebrauchsspuren die mit blossem Auge aus 30cm Entfernung bei Tageslicht sichtbar sind
+- Score 2 (Grade B): Minimale Gebrauchsspuren die mit blossem Auge aus 30cm sichtbar sein koennen
+- Score 3 (Grade C): Sichtbare Gebrauchsspuren wie Kratzer oder kleine Dellen
+- Score 4-5 (Unacceptable): Tiefe Kratzer, Risse, Dellen, Schmelz-/Brandspuren, nicht gereinigt/schmutzig
+
+KANTEN/RAHMEN-BEWERTUNG (Edges - alle 4 Seiten):
+- Score 0 (Premium): Keine Spuren, wie neu
+- Score 1 (Grade A): Keine sichtbaren Spuren aus 30cm
+- Score 2 (Grade B): Minimale Abriebspuren oder leichte Kratzer
+- Score 3 (Grade C): Sichtbare Kratzer, Abrieb oder kleine Dellen
+- Score 4-5 (Unacceptable): Tiefe Kratzer, Risse, starke Dellen
+
+KAMERA-BEWERTUNG (Linsen und Kamerarahmen):
+- Score 0 (Premium): Perfekt, keine Spuren
+- Score 1 (Grade A): Keine sichtbaren Spuren
+- Score 2 (Grade B): Minimale Spuren am Kamerarahmen
+- Score 3 (Grade C): Sichtbare Kratzer am Kamerarahmen
+- Score 4-5 (Unacceptable): Kratzer auf der Linse, Risse
+
+WICHTIG:
+- Bewerte STRENG und KONSISTENT
+- Im Zweifel den HOEHEREN Score (schlechtere Bewertung) waehlen
+- Wenn ein Bereich auf den Fotos nicht sichtbar ist, gib confidence niedriger an
 
 NUR JSON:
 {
@@ -690,7 +736,7 @@ NUR JSON:
 "camera_score": 0-5,
 "camera_defects": "was genau sichtbar ist oder 'keine'",
 "confidence": 50-100,
-"confidence_reason": "Warum sicher/unsicher (z.B. Fotos unscharf, Beleuchtung schlecht, etc.)"
+"confidence_reason": "Warum sicher/unsicher (z.B. Bereich nicht sichtbar, Foto unscharf, etc.)"
 }`;
 
             const content = [];
