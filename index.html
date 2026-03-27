@@ -327,6 +327,22 @@
             border: 1px solid var(--border);
         }
 
+        .album-btn {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--card);
+            color: var(--text);
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        .album-btn:hover { border-color: var(--accent); }
+
         .grade-now-btn {
             width: 100%;
             padding: 12px;
@@ -445,6 +461,9 @@
         <input type="file" id="fileInput" accept="image/*" capture="environment" multiple onchange="handleFiles(this)">
         <input type="file" id="albumInput" accept="image/*" multiple onchange="handleFiles(this)">
         <div class="upload-hint" id="uploadHint" style="display:none">Oder: <a href="#" style="color:var(--accent)" onclick="event.preventDefault();document.getElementById('albumInput').click()">Aus Album waehlen</a></div>
+
+        <!-- Kundenbilder Upload - immer sichtbar -->
+        <button class="album-btn" id="albumBtn" onclick="document.getElementById('albumInput').click()">📁 Kundenbilder hochladen</button>
 
         <div class="thumb-strip" id="thumbStrip"></div>
         <button class="grade-now-btn" id="gradeNowBtn" style="display:none" onclick="analyze()">Jetzt bewerten</button>
@@ -641,6 +660,9 @@
             // "Jetzt bewerten" Button bei Kundenfotos (weniger als 6 aber mindestens 1)
             const gradeBtn = document.getElementById('gradeNowBtn');
             gradeBtn.style.display = (photos.length > 0 && photos.length < MAX_PHOTOS && !analyzing) ? '' : 'none';
+
+            // Album-Button ausblenden bei Analyse oder genug Fotos
+            document.getElementById('albumBtn').style.display = (analyzing || photos.length >= MAX_PHOTOS) ? 'none' : '';
         }
 
         // ===== GRADING LOGIC (deterministic) =====
