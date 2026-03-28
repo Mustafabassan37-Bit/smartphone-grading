@@ -868,7 +868,16 @@ NUR JSON:
         }
 
         // ===== RESULT =====
+        function speakGrade(grade) {
+            const msg = new SpeechSynthesisUtterance('Grade ' + grade);
+            msg.lang = 'en-US';
+            msg.rate = 1.1;
+            msg.volume = 1;
+            speechSynthesis.speak(msg);
+        }
+
         function showResult(r) {
+            speakGrade(r.grade);
             const gc = gradeClass(r.grade);
             const areas = [['Body', r.body, r.defects.body_score], ['Screen', r.screen, r.defects.screen_score], ['Kanten', r.edges, r.defects.edges_score], ['Kamera', r.camera, r.defects.camera_score]];
 
