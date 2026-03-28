@@ -451,6 +451,7 @@
             </div>
             <button class="cam-switch" onclick="switchCamera()">🔄</button>
             <button class="cam-switch" style="left:14px;right:auto;bottom:14px" onclick="document.getElementById('albumInput').click()">📁</button>
+            <button class="cam-switch" id="torchBtn" style="left:14px;right:auto;top:14px;bottom:auto" onclick="toggleTorch()">💡</button>
         </div>
 
         <!-- Fallback Upload -->
@@ -540,7 +541,6 @@
                 document.getElementById('video').srcObject = stream;
                 document.getElementById('cameraWrap').style.display = '';
                 cameraMode = true;
-                enableTorch();
             } catch (e) {
                 document.getElementById('uploadFallback').style.display = '';
                 document.getElementById('uploadHint').style.display = '';
@@ -549,12 +549,15 @@
             updateUI();
         }
 
-        async function enableTorch() {
+        let torchOn = false;
+        async function toggleTorch() {
             try {
                 const track = stream.getVideoTracks()[0];
                 const caps = track.getCapabilities();
                 if (caps.torch) {
-                    await track.applyConstraints({ advanced: [{ torch: true }] });
+                    torchOn = !torchOn;
+                    await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+                    document.getElementById('torchBtn').textContent = torchOn ? '🔦' : '💡';
                 }
             } catch (e) {}
         }
@@ -568,7 +571,6 @@
                     audio: false
                 });
                 document.getElementById('video').srcObject = stream;
-                enableTorch();
             } catch (e) {}
         }
 
