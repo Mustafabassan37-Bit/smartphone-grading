@@ -46,7 +46,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 6px 0;
+            padding: 4px 0;
             flex-shrink: 0;
         }
 
@@ -76,25 +76,24 @@
         /* Big instruction above camera */
         .instruction {
             text-align: center;
-            padding: 10px 0 8px;
+            padding: 4px 0;
             flex-shrink: 0;
         }
 
         .instruction .step-num {
-            font-size: 13px;
+            font-size: 11px;
             color: var(--accent);
             font-weight: 600;
-            margin-bottom: 2px;
         }
 
         .instruction .step-text {
-            font-size: 28px;
+            font-size: 22px;
             font-weight: 800;
-            line-height: 1.1;
+            line-height: 1;
         }
 
         .instruction .step-icon {
-            font-size: 36px;
+            display: none;
         }
 
         /* Camera */
@@ -449,9 +448,9 @@
             <div class="camera-overlay">
                 <div class="shutter" onclick="takePhoto()"><div class="shutter-inner"></div></div>
             </div>
-            <button class="cam-switch" onclick="switchCamera()">🔄</button>
-            <button class="cam-switch" style="left:14px;right:auto;bottom:14px" onclick="document.getElementById('albumInput').click()">📁</button>
-            <button class="cam-switch" id="torchBtn" style="left:14px;right:auto;top:14px;bottom:auto" onclick="toggleTorch()">💡</button>
+            <button class="cam-switch" style="top:14px;right:14px;bottom:auto" onclick="switchCamera()">🔄</button>
+            <button class="cam-switch" style="top:14px;right:60px;bottom:auto" onclick="document.getElementById('albumInput').click()">📁</button>
+            <button class="cam-switch" id="torchBtn" style="top:14px;left:14px;right:auto;bottom:auto" onclick="toggleTorch()">💡</button>
         </div>
 
         <!-- Fallback Upload -->
