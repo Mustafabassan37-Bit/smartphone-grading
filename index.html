@@ -330,14 +330,14 @@
 
         .album-btn {
             width: 100%;
-            padding: 12px;
-            border: 2px solid var(--border);
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 600;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
             cursor: pointer;
             background: var(--card);
-            color: var(--text);
+            color: var(--text-muted);
             margin-bottom: 6px;
             flex-shrink: 0;
         }
@@ -868,12 +868,27 @@ NUR JSON:
         }
 
         // ===== RESULT =====
+        // Speech auf iOS aktivieren beim ersten Tap
+        let speechReady = false;
+        document.addEventListener('click', () => {
+            if (!speechReady) {
+                const dummy = new SpeechSynthesisUtterance('');
+                speechSynthesis.speak(dummy);
+                speechReady = true;
+            }
+        }, { once: false });
+
         function speakGrade(grade) {
-            const msg = new SpeechSynthesisUtterance('Grade ' + grade);
-            msg.lang = 'en-US';
-            msg.rate = 1.1;
-            msg.volume = 1;
-            speechSynthesis.speak(msg);
+            try {
+                speechSynthesis.cancel();
+                const text = grade === 'Unacceptable' ? 'Unacceptable' : 'Grade ' + grade;
+                const msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'en-US';
+                msg.rate = 1.0;
+                msg.volume = 1;
+                msg.pitch = 1;
+                speechSynthesis.speak(msg);
+            } catch (e) {}
         }
 
         function showResult(r) {
